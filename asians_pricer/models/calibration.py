@@ -22,6 +22,14 @@ class HestonCalibrator:
     """
 
     def __init__(self, valuation_date: date, spot_price: float, risk_free_rate: float):
+        """
+        Prepare QuantLib term structures and handles needed for calibration.
+
+        Args:
+            valuation_date: Date of calibration in either datetime.date or QuantLib format.
+            spot_price: Observed spot/futures level for the underlying.
+            risk_free_rate: Continuously compounded risk-free rate used for discounting.
+        """
         if ql is None:
             raise ImportError(
                 "QuantLib is required for calibration; install QuantLib-Python to use HestonCalibrator."
@@ -40,6 +48,15 @@ class HestonCalibrator:
 
     @staticmethod
     def _to_ql_date(value) -> "ql.Date":
+        """
+        Convert a datetime.date or QuantLib Date to a QuantLib Date object.
+
+        Returns:
+            QuantLib ``Date`` instance corresponding to the input.
+
+        Raises:
+            TypeError if the input is not a supported date representation.
+        """
         if isinstance(value, ql.Date):
             return value
         if isinstance(value, date):
@@ -50,9 +67,14 @@ class HestonCalibrator:
         self, market_quotes: Iterable[Tuple[float, object, float]]
     ) -> HestonParams:
         """
-        Calibrate to an iterable of (strike, expiry, implied_vol).
+        Calibrate to an iterable of (strike, expiry, implied_vol) observations.
 
-        expiry can be a QuantLib Date, datetime.date, or a float year fraction.
+        Args:
+            market_quotes: Iterable of tuples where expiry may be a QuantLib Date,
+                datetime.date, or float year fraction.
+
+        Returns:
+            ``HestonParams`` calibrated by least-squares fitting of QuantLib helpers.
         """
         process = ql.HestonProcess(
             self.r_ts,
@@ -100,6 +122,15 @@ class HestonCalibrator:
         return HestonParams(v0=v0_c, kappa=kappa_c, theta=theta_c, sigma=sigma_c, rho=rho_c)
 
     def _to_period(self, expiry) -> "ql.Period":
+        """
+        Convert various expiry representations to a QuantLib Period.
+
+        Accepts QuantLib Period/Date, datetime.date, or numeric year fractions and
+        maps them into day-based periods for calibration helpers.
+
+        Returns:
+            QuantLib ``Period`` representing the supplied expiry.
+        """
         if isinstance(expiry, ql.Period):
             return expiry
         if isinstance(expiry, (ql.Date, date)):

@@ -4,6 +4,10 @@ from asians_pricer import AsianOption, LevyMonteCarloEngine, NIGParams, Variance
 
 
 def main():
+    """
+    Demonstrate Asian option pricing under Variance Gamma and NIG Levy processes
+    using the dedicated Monte Carlo engine with common settings.
+    """
     option = AsianOption(strike=100.0, maturity=0.25, is_call=True)
     engine = LevyMonteCarloEngine(risk_free_rate=0.03, steps_per_year=252)
 

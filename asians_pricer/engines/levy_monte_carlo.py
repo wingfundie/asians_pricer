@@ -18,12 +18,26 @@ from ..models.levy import NIGParams, VarianceGammaParams
 
 @dataclass
 class LevySimulationResult:
+    """Container for Levy-process Monte Carlo paths and the simulation time grid."""
     time_grid: np.ndarray
     asset_paths: np.ndarray
 
 
 class LevyMonteCarloEngine:
+    """
+    Monte Carlo engine for arithmetic Asian options driven by Variance Gamma or NIG processes.
+
+    The engine simulates subordinated Brownian motions and supports antithetic variates
+    plus a simple control variate based on a geometric Asian proxy.
+    """
     def __init__(self, risk_free_rate: float, steps_per_year: int = 252):
+        """
+        Initialize the Levy engine with discounting and time discretization choices.
+
+        Args:
+            risk_free_rate: Continuously compounded risk-free rate used for discounting.
+            steps_per_year: Number of monitoring steps per year for the arithmetic average.
+        """
         self.r = risk_free_rate
         self.steps_per_year = max(1, int(steps_per_year))
 
@@ -36,6 +50,20 @@ class LevyMonteCarloEngine:
         antithetic: bool,
         seed: Optional[int],
     ) -> LevySimulationResult:
+        """
+        Simulate asset paths under a Variance Gamma process using gamma subordination.
+
+        Args:
+            params: Variance Gamma parameter set.
+            S0: Initial asset level.
+            T: Maturity in years.
+            n_paths: Number of Monte Carlo paths.
+            antithetic: Toggle antithetic variates for variance reduction.
+            seed: Optional RNG seed for reproducibility.
+
+        Returns:
+            ``LevySimulationResult`` with the simulated asset paths and time grid.
+        """
         n_steps = max(1, int(np.ceil(T * self.steps_per_year)))
         dt = T / float(n_steps)
         time_grid = np.linspace(0.0, T, n_steps + 1)
@@ -66,6 +94,20 @@ class LevyMonteCarloEngine:
         antithetic: bool,
         seed: Optional[int],
     ) -> LevySimulationResult:
+        """
+        Simulate asset paths under a Normal Inverse Gaussian process via Wald increments.
+
+        Args:
+            params: NIG parameter set.
+            S0: Initial asset level.
+            T: Maturity in years.
+            n_paths: Number of Monte Carlo paths.
+            antithetic: Toggle antithetic variates for variance reduction.
+            seed: Optional RNG seed for reproducibility.
+
+        Returns:
+            ``LevySimulationResult`` with the simulated asset paths and time grid.
+        """
         n_steps = max(1, int(np.ceil(T * self.steps_per_year)))
         dt = T / float(n_steps)
         time_grid = np.linspace(0.0, T, n_steps + 1)
@@ -93,7 +135,12 @@ class LevyMonteCarloEngine:
 
     def _estimate_effective_vol(self, paths: np.ndarray, T: float) -> float:
         """
-        Rough volatility estimate from simulated log returns for control variates.
+        Estimate an effective annualized volatility from simulated log returns.
+
+        Used to build a crude geometric Asian proxy for the control variate.
+
+        Returns:
+            Annualized volatility estimate derived from the simulated paths.
         """
         log_returns = np.diff(np.log(paths), axis=1)
         if log_returns.size == 0:
@@ -114,7 +161,22 @@ class LevyMonteCarloEngine:
         diag_samples: int = 0,
     ) -> dict:
         """
-        Price an arithmetic Asian option under a Levy process (VG or NIG).
+        Price an arithmetic Asian option under a Variance Gamma or NIG process.
+
+        Args:
+            option: Contract specification exposing ``strike``, ``maturity``, and ``is_call``.
+            S0: Initial futures price.
+            n_paths: Number of Monte Carlo paths.
+            params: Parameter set corresponding to the chosen process.
+            process: ``\"vg\"`` or ``\"nig\"`` to pick the driver.
+            antithetic: Use antithetic variates when True.
+            control_variate: Apply a geometric Asian control variate when True.
+            seed: Optional RNG seed for reproducibility.
+            diag_samples: Number of sample paths to retain for diagnostics/plotting.
+
+        Returns:
+            Dictionary with price, standard error, variance reduction statistics, and
+            optional diagnostics for visualization.
         """
         if process.lower() == "vg":
             sim = self._simulate_vg(params, S0, option.maturity, n_paths, antithetic, seed)

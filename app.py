@@ -17,6 +17,13 @@ from asians_pricer.visualization.plotting import render_dashboard
 
 
 def parse_args() -> argparse.Namespace:
+    """
+    Build the CLI argument parser for the Asian option pricer.
+
+    Returns:
+        Parsed arguments containing the model choice, contract specs, Monte Carlo
+        settings, and optional output locations for logging and dashboards.
+    """
     parser = argparse.ArgumentParser(description="ASX energy Asian option pricer CLI.")
     parser.add_argument("--model", choices=["heston", "vg", "nig"], default="heston")
     parser.add_argument("--strike", type=float, required=True)
@@ -57,6 +64,14 @@ def parse_args() -> argparse.Namespace:
 
 
 def main():
+    """
+    Entry point for command-line pricing runs.
+
+    The function parses CLI arguments, configures logging, prices an Asian option
+    under the chosen model (Heston, Variance Gamma, or NIG), optionally renders a
+    Plotly dashboard with diagnostics, and records the run to a JSONL log for later
+    analysis or replay.
+    """
     args = parse_args()
     configure_logging()
 

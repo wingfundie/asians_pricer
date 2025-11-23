@@ -13,6 +13,12 @@ from ..instruments.asian_option import AsianOption
 
 
 class GreekEngine:
+    """
+    Finite-difference engine for estimating Greeks using common random numbers.
+
+    Designed to pair with ``VectorizedHestonEngine`` so that bump-and-revalue
+    calculations share random draws and produce smoother sensitivity estimates.
+    """
     def __init__(
         self,
         engine: VectorizedHestonEngine,
@@ -21,6 +27,16 @@ class GreekEngine:
         time_bump: float = 1.0 / 252.0,
         seed: Optional[int] = 7,
     ):
+        """
+        Configure bump sizes and the pricing engine used for revaluation.
+
+        Args:
+            engine: Heston Monte Carlo engine used for pricing.
+            spot_bump_pct: Relative bump to apply to the spot for Delta/Gamma.
+            vol_bump: Absolute bump applied to the volatility (sqrt(v0)) for Vega/Volga.
+            time_bump: Absolute maturity reduction (years) for Theta calculation.
+            seed: RNG seed reused across bumps to enforce common random numbers.
+        """
         self.engine = engine
         self.spot_bump_pct = spot_bump_pct
         self.vol_bump = vol_bump
@@ -30,6 +46,18 @@ class GreekEngine:
     def _price(
         self, option: AsianOption, S0: float, n_paths: int, params: Optional[HestonParams] = None
     ) -> Dict[str, float]:
+        """
+        Price the option with optional parameter overrides while keeping CRNs.
+
+        Args:
+            option: Contract to price.
+            S0: Spot level to use for this valuation.
+            n_paths: Number of Monte Carlo paths.
+            params: Optional Heston parameters; defaults to the base engine params.
+
+        Returns:
+            Pricing result dictionary from the Monte Carlo engine.
+        """
         if params is None:
             return self.engine.price_asian(
                 option, S0, n_paths, antithetic=True, control_variate=True, seed=self.seed
@@ -45,7 +73,16 @@ class GreekEngine:
         self, option: AsianOption, S0: float, n_paths: int
     ) -> Dict[str, float]:
         """
-        Compute Delta, Gamma, Vega (via v0), Vanna, Volga, and a simple Theta.
+        Compute Delta, Gamma, Vega, Vanna, Volga, and Theta via bump-and-revalue.
+
+        Args:
+            option: Asian option contract to analyse.
+            S0: Current spot/futures level.
+            n_paths: Monte Carlo paths to use for each bump (CRNs enforced).
+
+        Returns:
+            Dictionary containing the base price and requested Greeks, useful for
+            stress testing or calibration workflows.
         """
         eps_S = self.spot_bump_pct * S0
         eps_vol = self.vol_bump

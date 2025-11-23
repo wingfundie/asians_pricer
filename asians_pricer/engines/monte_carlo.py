@@ -18,13 +18,30 @@ from ..models.heston import HestonParams, clamp_correlation
 
 @dataclass
 class SimulationResult:
+    """Container for simulated Heston paths and associated time grid."""
     time_grid: np.ndarray
     asset_paths: np.ndarray
     variance_paths: np.ndarray
 
 
 class VectorizedHestonEngine:
+    """
+    Monte Carlo engine for arithmetic Asian options under the Heston model.
+
+    The engine is vectorized with NumPy, supports antithetic variates, and exposes
+    control variates via a geometric Asian proxy to reduce variance for pricing and
+    Greek calculations.
+    """
     def __init__(self, params: HestonParams, risk_free_rate: float, steps_per_year: int = 252):
+        """
+        Initialize the engine with model parameters and simulation controls.
+
+        Args:
+            params: Heston parameter set defining variance dynamics.
+            risk_free_rate: Continuously compounded risk-free rate used for discounting.
+            steps_per_year: Temporal resolution of the Euler scheme; higher values give
+                finer monitoring for the arithmetic average.
+        """
         self.params = params
         self.r = risk_free_rate
         self.steps_per_year = max(1, int(steps_per_year))
@@ -39,7 +56,18 @@ class VectorizedHestonEngine:
         seed: Optional[int] = None,
     ) -> SimulationResult:
         """
-        Simulate Heston price and variance paths.
+        Simulate correlated price and variance paths under the Heston dynamics.
+
+        Args:
+            S0: Initial futures/spot level.
+            T: Maturity in years.
+            n_paths: Number of Monte Carlo paths to generate.
+            antithetic: If True, use antithetic variates to halve variance.
+            seed: Optional RNG seed for reproducibility or common random numbers.
+
+        Returns:
+            ``SimulationResult`` containing the time grid, simulated asset prices,
+            and variance trajectories for downstream pricing or diagnostics.
         """
         n_paths = int(n_paths)
         if n_paths <= 0:
@@ -90,8 +118,18 @@ class VectorizedHestonEngine:
 
     def _geometric_asian_bs_price(self, S0: float, K: float, T: float) -> float:
         """
-        Approximate geometric Asian price using a Black-Scholes style formula.
-        Uses long-run variance as the volatility proxy.
+        Approximate a geometric Asian option price with a Black-Scholes style proxy.
+
+        The approximation uses the long-run variance as a volatility estimate and
+        serves as a control variate anchor for the arithmetic Asian payoff.
+
+        Args:
+            S0: Initial price.
+            K: Strike price.
+            T: Maturity in years.
+
+        Returns:
+            Discounted geometric Asian option price used for control variates.
         """
         vol_approx = np.sqrt(max(self.params.theta, 0.0))
         sig_geo = vol_approx / np.sqrt(3.0)
@@ -117,15 +155,21 @@ class VectorizedHestonEngine:
         diag_samples: int = 0,
     ) -> dict:
         """
-        Price an arithmetic Asian option via Monte Carlo with an optional control variate.
+        Price an arithmetic Asian option via Monte Carlo with optional variance reduction.
 
         Args:
-            option: AsianOption instance or any object exposing strike, maturity, and is_call.
+            option: Contract specification exposing ``strike``, ``maturity``, and ``is_call``.
             S0: Initial futures price.
             n_paths: Number of Monte Carlo paths.
-            antithetic: Use antithetic variates if True.
-            control_variate: Apply geometric Asian control variate if True.
-            seed: Optional RNG seed for reproducibility (used for CRNs in Greeks).
+            antithetic: Use antithetic variates when True.
+            control_variate: Apply a geometric Asian control variate when True.
+            seed: Optional RNG seed for reproducible simulations or common random numbers.
+            diag_samples: Number of sample paths to retain for diagnostics/plotting.
+
+        Returns:
+            Dictionary with price, standard errors (with and without control variate),
+            beta for the control variate, variance reduction factor, simulation sizes,
+            and optional diagnostics suitable for dashboards.
         """
         result = self.simulate(S0, option.maturity, n_paths, antithetic=antithetic, seed=seed)
         S = result.asset_paths

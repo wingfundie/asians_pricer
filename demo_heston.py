@@ -9,6 +9,10 @@ from asians_pricer import (
 
 
 def main():
+    """
+    Demonstrate pricing and finite-difference Greeks for an arithmetic Asian option
+    under the Heston model using the vectorized Monte Carlo engine.
+    """
     option = AsianOption(strike=100.0, maturity=0.25, is_call=True)
     params = HestonParams(v0=0.04, kappa=2.0, theta=0.09, sigma=0.5, rho=-0.4)
     engine = VectorizedHestonEngine(params=params, risk_free_rate=0.03, steps_per_year=252)

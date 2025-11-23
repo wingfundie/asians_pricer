@@ -6,6 +6,12 @@ from typing import Iterable, Sequence, Tuple
 
 
 def _require_plotly():
+    """
+    Import Plotly lazily and raise a helpful error if it is missing.
+
+    Returns:
+        The ``plotly.graph_objects`` module once successfully imported.
+    """
     try:
         import plotly.graph_objects as go  # type: ignore
     except ImportError as exc:  # pragma: no cover - optional dependency
@@ -15,7 +21,17 @@ def _require_plotly():
 
 def plot_paths(time_grid, asset_paths, variance_paths=None, num_paths: int = 50):
     """
-    Plot a subset of simulated paths.
+    Plot a subset of simulated asset (and optional variance) paths.
+
+    Args:
+        time_grid: 1D iterable of time stamps for each column in ``asset_paths``.
+        asset_paths: 2D array-like of simulated price paths.
+        variance_paths: Optional 2D array-like of variance paths to plot alongside prices.
+        num_paths: Maximum number of paths to render to keep the figure readable.
+
+    Returns:
+        A Plotly ``Figure`` for asset paths, or a tuple of (asset_fig, variance_fig)
+        when variance paths are supplied. Useful for quick diagnostics after simulation.
     """
     go = _require_plotly()
     fig = go.Figure()
@@ -61,7 +77,15 @@ def plot_paths(time_grid, asset_paths, variance_paths=None, num_paths: int = 50)
 
 def plot_convergence(path_counts: Sequence[int], prices: Sequence[float]):
     """
-    Basic convergence plot of price vs number of Monte Carlo paths.
+    Visualize Monte Carlo convergence as the number of simulated paths increases.
+
+    Args:
+        path_counts: Sequence of path counts tested.
+        prices: Sequence of estimated prices corresponding to ``path_counts``.
+
+    Returns:
+        Plotly ``Figure`` showing the price trajectory, helping assess stability
+        and choose an appropriate path budget.
     """
     go = _require_plotly()
     fig = go.Figure()
@@ -83,7 +107,15 @@ def plot_convergence(path_counts: Sequence[int], prices: Sequence[float]):
 
 def plot_payoff_histogram(payoffs: Sequence[float], bins: int = 50):
     """
-    Histogram of simulated payoffs.
+    Draw a histogram of simulated payoffs to inspect distribution shape and tails.
+
+    Args:
+        payoffs: Sequence of simulated payoff realizations.
+        bins: Number of histogram bins to render.
+
+    Returns:
+        Plotly ``Figure`` summarizing payoff dispersion, helpful when debugging
+        variance issues or extreme scenario behavior.
     """
     go = _require_plotly()
     fig = go.Figure()
@@ -99,7 +131,17 @@ def render_dashboard(
     title: str = "Asian Option Pricing Diagnostics",
 ):
     """
-    Build a simple HTML dashboard with paths, payoffs, and summary metrics.
+    Build an HTML dashboard combining paths, payoff histogram, and summary metrics.
+
+    Args:
+        diagnostics: Output diagnostics from pricing (time grid, sampled paths, payoffs).
+        price_result: Pricing result dictionary including summary statistics.
+        output_path: Destination HTML file written with ``plotly.io.write_html``.
+        title: Title to display on the dashboard.
+
+    Returns:
+        Path to the generated HTML file, which can be opened in a browser or shared
+        with stakeholders for quick inspection of a run.
     """
     go = _require_plotly()
     from plotly.subplots import make_subplots  # type: ignore

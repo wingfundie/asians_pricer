@@ -1,10 +1,12 @@
 from .heston import HestonParams, clamp_correlation, validate_feller_condition
 from .levy import NIGParams, VarianceGammaParams
+from .levy_calibration import LevyCalibrator
 
 __all__ = [
     "HestonParams",
     "NIGParams",
     "VarianceGammaParams",
+    "LevyCalibrator",
     "clamp_correlation",
     "validate_feller_condition",
 ]

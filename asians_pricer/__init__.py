@@ -7,6 +7,7 @@ instrument definitions, and finite-difference Greek utilities.
 
 from .models.heston import HestonParams, validate_feller_condition
 from .models.levy import NIGParams, VarianceGammaParams
+from .models.levy_calibration import LevyCalibrator
 from .engines.monte_carlo import VectorizedHestonEngine
 from .engines.levy_monte_carlo import LevyMonteCarloEngine
 from .instruments.asian_option import AsianOption
@@ -20,6 +21,7 @@ __all__ = [
     "GreekEngine",
     "HestonParams",
     "LevyMonteCarloEngine",
+    "LevyCalibrator",
     "NIGParams",
     "RunRecord",
     "configure_logging",

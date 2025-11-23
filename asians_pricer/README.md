@@ -5,10 +5,10 @@ Python toolkit for pricing arithmetic Asian options (ASX energy focus) under Hes
 ## Features
 - Heston MC with full truncation, antithetic variates, geometric control variate, and diagnostics.
 - VG/NIG MC via subordinated Brownian motion with control variates.
-- Optional Heston calibration using QuantLib helpers.
+- Calibration helpers: QuantLib-based Heston calibrator; scipy-based VG/NIG calibrator.
 - Finite-difference Greeks (Delta, Gamma, Vega via v0, Vanna, Volga, Theta) with common random numbers.
 - Run logging to JSONL plus Plotly dashboards for paths, payoffs, and summary metrics.
-- CLI, scripts, and notebook for quick starts.
+- CLI, scripts, and notebook for quick starts; simple logging config helper.
 
 ## Install (local)
 ```bash
@@ -27,6 +27,8 @@ asians_pricer/
   instruments/asian_option.py  # Contract definition
   models/heston.py, levy.py    # Params and helpers
   models/calibration.py        # QuantLib Heston calibrator (optional)
+  models/levy_calibration.py   # Scipy VG/NIG calibrator
+  logging_utils.py             # configure_logging helper
   storage/run_store.py         # JSONL run logging
   visualization/plotting.py    # Plotly dashboards
 app.py                         # CLI
@@ -62,13 +64,17 @@ from asians_pricer.logging_utils import configure_logging
 configure_logging(logging.INFO)
 spot, rate = 105.0, 0.03
 
-# 1) Calibrate or set Heston params
+# 1) Calibrate or set Heston params (and optionally VG/NIG via LevyCalibrator)
 try:
     from asians_pricer.models import HestonCalibrator
     cal = HestonCalibrator(date.today(), spot_price=spot, risk_free_rate=rate)
     heston_params = cal.calibrate([(100, 0.25, 0.6)])
 except Exception:
     heston_params = HestonParams(v0=0.04, kappa=2.0, theta=0.09, sigma=0.5, rho=-0.4)
+from asians_pricer import LevyCalibrator, VarianceGammaParams, NIGParams
+levy_cal = LevyCalibrator(spot=spot, rate=rate, n_paths=10_000)
+vg_guess = levy_cal.calibrate_vg([(100, 0.25, 6.0)])
+nig_guess = levy_cal.calibrate_nig([(100, 0.25, 6.0)])
 
 # 2) Contract
 opt = AsianOption(strike=100.0, maturity=0.25, is_call=True)

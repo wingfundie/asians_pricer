@@ -1,8 +1,13 @@
 # market_data
 
-Simple placeholders for curves and surfaces.
+Lightweight placeholders for curves and surfaces.
 
-- `curves.py`: `flat_discount(rate)` -> discount function; `flat_forward(forward_price)` -> forward curve.
-- `surfaces.py`: `flat_vol(vol)` -> flat vol surface callable.
+## curves.py
+- `flat_discount(rate)` -> returns D(t) = exp(-r t).
+- `flat_forward(forward_price)` -> constant forward curve F(t) = F0.
+  - These are callable factories to plug into calibration/pricing when full curve bootstrapping is unnecessary.
 
-Swap in real data loaders/curves as needed.
+## surfaces.py
+- `flat_vol(vol)` -> function vol(T, K) = constant.
+
+Replace with real loaders/bootstrappers as needed.
